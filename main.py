@@ -85,8 +85,6 @@ class CleanerCApp(ctk.CTk):
         self.card_used = self.create_stat_card(self.stats_frame, "Used Space", "...", "#e74c3c", 1)
         self.card_free = self.create_stat_card(self.stats_frame, "Free Space", "...", "#2ecc71", 2)
 
-        # Update disk info on startup
-        self.update_disk_info()
 
         # 3. Middle Section: Actions & Log Layout
         # Creating a combined frame for Buttons and Logs
@@ -135,6 +133,9 @@ class CleanerCApp(ctk.CTk):
         self.log_textbox.grid(row=2, column=0, sticky="nsew", padx=20, pady=(5, 20))
         self.log_textbox.insert("0.0", "Welcome to CleanerC Engine v1.0\nReady for operation.\n" + "-"*30 + "\n")
         self.log_textbox.configure(state="disabled")
+
+        # Update disk info on startup (UI components must be initialized first)
+        self.update_disk_info()
 
     def create_stat_card(self, parent, title, value, color, column):
         card = ctk.CTkFrame(parent, height=120, corner_radius=15)
