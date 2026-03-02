@@ -49,43 +49,105 @@ class CleanerCApp(ctk.CTk):
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.grid(row=0, column=1, padx=30, pady=30, sticky="nsew")
         self.main_container.grid_columnconfigure(0, weight=1)
-        self.main_container.grid_rowconfigure(1, weight=1)
+        self.main_container.grid_rowconfigure(2, weight=1) # Log area expands
 
-        # Header Section
+        # 1. Header Section
         self.header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
+        self.header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 25))
         
         self.title_label = ctk.CTkLabel(
             self.header_frame, 
-            text="System Status: Good", 
+            text="System Overview", 
             font=ctk.CTkFont(family="Inter", size=32, weight="bold")
         )
         self.title_label.pack(side="left")
 
-        # Content Area
-        self.content_frame = ctk.CTkFrame(self.main_container, corner_radius=20)
-        self.content_frame.grid(row=1, column=0, sticky="nsew")
-        
-        # Center Content
-        self.center_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.center_frame.place(relx=0.5, rely=0.5, anchor="center")
-
-        self.welcome_msg = ctk.CTkLabel(
-            self.center_frame, 
-            text="CleanerC is ready to scan", 
-            font=ctk.CTkFont(size=18)
-        )
-        self.welcome_msg.pack(pady=10)
-
-        self.scan_btn = ctk.CTkButton(
-            self.center_frame, 
-            text="Analyze Disk", 
-            font=ctk.CTkFont(size=16, weight="bold"),
-            height=45,
-            width=220,
+        self.status_badge = ctk.CTkLabel(
+            self.header_frame,
+            text="● SYSTEM SECURE",
+            text_color="#2ecc71",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color=("#dbf9e1", "#1e3a24"),
+            padx=10,
+            pady=5,
             corner_radius=10
         )
-        self.scan_btn.pack(pady=20)
+        self.status_badge.pack(side="right")
+
+        # 2. Top Section: Stats Cards
+        self.stats_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.stats_frame.grid(row=1, column=0, sticky="ew", pady=(0, 20))
+        self.stats_frame.grid_columnconfigure((0, 1, 2), weight=1, pad=20)
+
+        self.card_junk = self.create_stat_card(self.stats_frame, "Junk Files", "1.2 GB", "#3498db", 0)
+        self.card_cache = self.create_stat_card(self.stats_frame, "System Cache", "450 MB", "#e67e22", 1)
+        self.card_health = self.create_stat_card(self.stats_frame, "Disk Health", "Healthy", "#2ecc71", 2)
+
+        # 3. Middle Section: Actions & Log Layout
+        # Creating a combined frame for Buttons and Logs
+        self.work_area = ctk.CTkFrame(self.main_container, corner_radius=20, fg_color=("#f2f2f2", "#2b2b2b"))
+        self.work_area.grid(row=2, column=0, sticky="nsew")
+        self.work_area.grid_columnconfigure(0, weight=1)
+        self.work_area.grid_rowconfigure(1, weight=1)
+
+        # Action Buttons Ribbon
+        self.actions_frame = ctk.CTkFrame(self.work_area, fg_color="transparent")
+        self.actions_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
+
+        self.btn_analyze = ctk.CTkButton(
+            self.actions_frame, text="Quick Analysis", 
+            width=150, height=40, font=ctk.CTkFont(weight="bold"),
+            command=lambda: self.log_message("Starting system analysis...")
+        )
+        self.btn_analyze.pack(side="left", padx=(0, 10))
+
+        self.btn_clean = ctk.CTkButton(
+            self.actions_frame, text="Start Cleaning", 
+            fg_color="#e74c3c", hover_color="#c0392b",
+            width=150, height=40, font=ctk.CTkFont(weight="bold"),
+            command=lambda: self.log_message("Warning: Cleaning logic not implemented yet.")
+        )
+        self.btn_clean.pack(side="left", padx=10)
+
+        self.btn_refresh = ctk.CTkButton(
+            self.actions_frame, text="Refresh", 
+            width=100, height=40, fg_color="gray40",
+            command=lambda: self.log_message("Updating system stats...")
+        )
+        self.btn_refresh.pack(side="right")
+
+        # Log/Output Panel
+        self.log_label = ctk.CTkLabel(self.work_area, text="Activity Log", font=ctk.CTkFont(size=14, weight="bold"))
+        self.log_label.grid(row=1, column=0, sticky="nw", padx=25)
+
+        self.log_textbox = ctk.CTkTextbox(
+            self.work_area, 
+            corner_radius=10,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            border_width=2,
+            border_color=("#d1d1d1", "#3d3d3d")
+        )
+        self.log_textbox.grid(row=2, column=0, sticky="nsew", padx=20, pady=(5, 20))
+        self.log_textbox.insert("0.0", "Welcome to CleanerC Engine v1.0\nReady for operation.\n" + "-"*30 + "\n")
+        self.log_textbox.configure(state="disabled")
+
+    def create_stat_card(self, parent, title, value, color, column):
+        card = ctk.CTkFrame(parent, height=120, corner_radius=15)
+        card.grid(row=0, column=column, sticky="ew", padx=5)
+        
+        title_lbl = ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=13, weight="normal"), text_color="gray")
+        title_lbl.pack(pady=(15, 0), padx=20, anchor="nw")
+        
+        value_lbl = ctk.CTkLabel(card, text=value, font=ctk.CTkFont(size=24, weight="bold"), text_color=color)
+        value_lbl.pack(pady=(5, 15), padx=20, anchor="nw")
+        
+        return card
+
+    def log_message(self, message):
+        self.log_textbox.configure(state="normal")
+        self.log_textbox.insert("end", f"[{type(self).__name__}] {message}\n")
+        self.log_textbox.see("end")
+        self.log_textbox.configure(state="disabled")
 
     def create_nav_button(self, text, row):
         button = ctk.CTkButton(
