@@ -15,6 +15,14 @@ class CleanerCApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
+        # --- Cleaning Targets ---
+        self.clean_targets = {
+            "User Temp": os.environ.get('TEMP'),
+            "System Temp": os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Temp'),
+            "Prefetch": os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Prefetch'),
+            "Recycle Bin": "C:\\$Recycle.Bin"
+        }
+
         # --- Layout Grid Configuration ---
         # Column 0: Sidebar, Column 1: Main Content
         self.grid_columnconfigure(1, weight=1)
@@ -100,7 +108,7 @@ class CleanerCApp(ctk.CTk):
         self.btn_analyze = ctk.CTkButton(
             self.actions_frame, text="Quick Analysis", 
             width=150, height=40, font=ctk.CTkFont(weight="bold"),
-            command=lambda: self.log_message("Starting system analysis...")
+            command=self.run_analysis
         )
         self.btn_analyze.pack(side="left", padx=(0, 10))
 
@@ -168,6 +176,15 @@ class CleanerCApp(ctk.CTk):
             
         except Exception as e:
             self.log_message(f"Error fetching disk info: {str(e)}")
+
+    def run_analysis(self):
+        self.log_message("Scanning safe directories...")
+        for name, path in self.clean_targets.items():
+            if os.path.exists(path):
+                self.log_message(f"Detected: {name} -> {path}")
+            else:
+                self.log_message(f"Skipped: {name} (Path not found)")
+        self.log_message("Analysis complete. Ready to clean.")
 
     def log_message(self, message):
         self.log_textbox.configure(state="normal")
