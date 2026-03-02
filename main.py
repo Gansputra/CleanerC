@@ -1,4 +1,6 @@
 import customtkinter as ctk
+import psutil
+import os
 
 class CleanerCApp(ctk.CTk):
     def __init__(self):
@@ -79,9 +81,12 @@ class CleanerCApp(ctk.CTk):
         self.stats_frame.grid(row=1, column=0, sticky="ew", pady=(0, 20))
         self.stats_frame.grid_columnconfigure((0, 1, 2), weight=1, pad=20)
 
-        self.card_junk = self.create_stat_card(self.stats_frame, "Junk Files", "1.2 GB", "#3498db", 0)
-        self.card_cache = self.create_stat_card(self.stats_frame, "System Cache", "450 MB", "#e67e22", 1)
-        self.card_health = self.create_stat_card(self.stats_frame, "Disk Health", "Healthy", "#2ecc71", 2)
+        self.card_total = self.create_stat_card(self.stats_frame, "Total Capacity", "...", "#3498db", 0)
+        self.card_used = self.create_stat_card(self.stats_frame, "Used Space", "...", "#e74c3c", 1)
+        self.card_free = self.create_stat_card(self.stats_frame, "Free Space", "...", "#2ecc71", 2)
+
+        # Update disk info on startup
+        self.update_disk_info()
 
         # 3. Middle Section: Actions & Log Layout
         # Creating a combined frame for Buttons and Logs
@@ -112,7 +117,7 @@ class CleanerCApp(ctk.CTk):
         self.btn_refresh = ctk.CTkButton(
             self.actions_frame, text="Refresh", 
             width=100, height=40, fg_color="gray40",
-            command=lambda: self.log_message("Updating system stats...")
+            command=self.update_disk_info
         )
         self.btn_refresh.pack(side="right")
 
@@ -141,7 +146,27 @@ class CleanerCApp(ctk.CTk):
         value_lbl = ctk.CTkLabel(card, text=value, font=ctk.CTkFont(size=24, weight="bold"), text_color=color)
         value_lbl.pack(pady=(5, 15), padx=20, anchor="nw")
         
+        # Keep a reference to the label so it can be updated
+        card.value_label = value_lbl
         return card
+
+    def update_disk_info(self):
+        try:
+            # Get usage for C:\ on Windows
+            disk = psutil.disk_usage('C:\\')
+            
+            # Helper to convert bytes to GB
+            to_gb = lambda b: f"{b / (1024**3):.1f} GB"
+            
+            # Update labels
+            self.card_total.value_label.configure(text=to_gb(disk.total))
+            self.card_used.value_label.configure(text=to_gb(disk.used))
+            self.card_free.value_label.configure(text=to_gb(disk.free))
+            
+            self.log_message(f"Disk C fetched: {to_gb(disk.free)} free of {to_gb(disk.total)}")
+            
+        except Exception as e:
+            self.log_message(f"Error fetching disk info: {str(e)}")
 
     def log_message(self, message):
         self.log_textbox.configure(state="normal")
