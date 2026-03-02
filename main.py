@@ -177,13 +177,47 @@ class CleanerCApp(ctk.CTk):
         except Exception as e:
             self.log_message(f"Error fetching disk info: {str(e)}")
 
+    def get_folder_size(self, folder_path):
+        total_size = 0
+        try:
+            for dirpath, dirnames, filenames in os.walk(folder_path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    # Skip if it is a symbolic link
+                    if not os.path.islink(fp):
+                        try:
+                            total_size += os.path.getsize(fp)
+                        except (OSError, PermissionError):
+                            # Skip files that are currently in use or protected
+                            continue
+        except Exception as e:
+            self.log_message(f"Error scanning {folder_path}: {str(e)}")
+        return total_size
+
+    def format_size(self, size_bytes):
+        if size_bytes == 0: return "0 B"
+        size_name = ("B", "KB", "MB", "GB", "TB")
+        import math
+        i = int(math.floor(math.log(size_bytes, 1024)))
+        p = math.pow(1024, i)
+        s = round(size_bytes / p, 2)
+        return f"{s} {size_name[i]}"
+
     def run_analysis(self):
-        self.log_message("Scanning safe directories...")
+        self.log_message("Scanning safe directories for junk files...")
+        total_junk = 0
+        
         for name, path in self.clean_targets.items():
-            if os.path.exists(path):
-                self.log_message(f"Detected: {name} -> {path}")
+            if path and os.path.exists(path):
+                self.log_message(f"Analyzing {name}...")
+                size = self.get_folder_size(path)
+                total_junk += size
+                self.log_message(f" > Found: {self.format_size(size)}")
             else:
-                self.log_message(f"Skipped: {name} (Path not found)")
+                self.log_message(f"Skipped: {name} (Path not accessible)")
+        
+        self.log_message("-" * 20)
+        self.log_message(f"TOTAL JUNK DETECTED: {self.format_size(total_junk)}")
         self.log_message("Analysis complete. Ready to clean.")
 
     def log_message(self, message):
