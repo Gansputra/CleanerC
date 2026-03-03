@@ -5,6 +5,8 @@ import threading
 import tkinter as tk
 import ctypes
 import platform
+import wmi
+import GPUtil
 from tkinter import messagebox
 from send2trash import send2trash
 
@@ -106,8 +108,20 @@ class CleanerCApp(ctk.CTk):
             pass
             
         self.card_cpu = self.create_stat_card(self.stats_frame, "CPU Metrics", "0%", "#9b59b6", 0, 1, subtitle=cpu_name)
+
+        # GPU Card
+        gpu_name = "Unknown GPU"
+        try:
+            w = wmi.WMI()
+            for gpu in w.Win32_VideoController():
+                gpu_name = gpu.Name
+                break
+        except:
+            pass
+            
+        self.card_gpu = self.create_stat_card(self.stats_frame, "GPU Metrics", "0%", "#f1c40f", 0, 2, subtitle=gpu_name)
         
-        # Start recurring updates for CPU
+        # Start recurring updates for CPU & GPU
         self.update_system_stats()
 
         # 2. Disk Cleaner Frame
@@ -229,6 +243,22 @@ class CleanerCApp(ctk.CTk):
                 self.card_cpu.value_label.configure(text_color="#f39c12")
             else:
                 self.card_cpu.value_label.configure(text_color="#9b59b6")
+
+            # GPU Update
+            gpus = GPUtil.getGPUs()
+            if gpus:
+                gpu_usage = gpus[0].load * 100
+                self.card_gpu.value_label.configure(text=f"{gpu_usage:.1f}%")
+                
+                # Change color based on load
+                if gpu_usage > 80:
+                    self.card_gpu.value_label.configure(text_color="#e74c3c")
+                elif gpu_usage > 50:
+                    self.card_gpu.value_label.configure(text_color="#f39c12")
+                else:
+                    self.card_gpu.value_label.configure(text_color="#f1c40f")
+            else:
+                self.card_gpu.value_label.configure(text="N/A", text_color="gray")
 
         except Exception:
             pass

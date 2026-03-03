@@ -2,3 +2,6 @@ customtkinter
 pillow
 psutil
 send2trash
+GPUtil
+wmi
+pywin32
