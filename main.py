@@ -9,6 +9,7 @@ import wmi
 import GPUtil
 import webbrowser
 import time
+import subprocess
 from datetime import datetime, timedelta
 from tkinter import messagebox
 from send2trash import send2trash
@@ -217,13 +218,27 @@ class CleanerCApp(ctk.CTk):
         self.log_textbox.insert("0.0", "Welcome to CleanerC Engine v1.0\nReady for operation.\n" + "-"*30 + "\n")
         self.log_textbox.configure(state="disabled")
 
-        # 3. System Tools Frame (Placeholder)
+        # 3. System Tools Frame
         self.tools_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.tools_label = ctk.CTkLabel(
-            self.tools_frame, text="System Tools Coming Soon", 
-            font=ctk.CTkFont(size=24, weight="bold")
-        )
-        self.tools_label.pack(expand=True)
+        self.tools_frame.grid_columnconfigure(0, weight=1)
+        self.tools_frame.grid_rowconfigure(0, weight=1)
+
+        # Tools Menu (List of Buttons)
+        self.tools_menu_frame = ctk.CTkFrame(self.tools_frame, fg_color="transparent")
+        self.tools_menu_frame.grid(row=0, column=0, sticky="nsew")
+        self.tools_menu_frame.grid_columnconfigure(0, weight=1)
+
+        self.create_tool_anchor("Process Optimizer", "Manage running apps & free RAM", 0, lambda: self.show_tool_page("process"))
+        self.create_tool_anchor("Startup Manager", "Control apps that start with Windows", 1, lambda: self.show_tool_page("startup"))
+        self.create_tool_anchor("Large File Finder", "Find files over 1GB on your drive", 2, lambda: self.show_tool_page("large_files"))
+        self.create_tool_anchor("Cache Cleaner", "Clean browser & application cache", 3, lambda: self.show_tool_page("cache"))
+        self.create_tool_anchor("DNS Flush", "Reset network resolver cache", 4, self.run_dns_flush)
+
+        # Individual Tool Pages
+        self.process_page = self.create_tool_page("Process Optimizer", self.refresh_processes)
+        self.startup_page = self.create_tool_page("Startup Manager", self.load_startup_apps)
+        self.large_files_page = self.create_tool_page("Large File Finder", self.start_large_file_scan)
+        self.cache_page = self.create_tool_page("Cache Cleaner", self.run_cache_clean)
 
         # Initialize navigation
         self.select_frame_by_name("dashboard")
@@ -516,6 +531,170 @@ class CleanerCApp(ctk.CTk):
             self.cleaner_frame.grid(row=0, column=0, sticky="nsew")
         elif name == "tools":
             self.tools_frame.grid(row=0, column=0, sticky="nsew")
+            self.show_tool_page("menu")
+
+    def create_tool_anchor(self, title, desc, row, command):
+        btn = ctk.CTkButton(
+            self.tools_menu_frame, 
+            text=f"{title}\n{desc}", 
+            height=80, 
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=("#ffffff", "#2b2b2b"),
+            text_color=("gray10", "gray90"),
+            hover_color=("gray85", "gray20"),
+            border_width=2,
+            border_color=("#dcdcdc", "#3d3d3d"),
+            anchor="w",
+            command=command
+        )
+        btn.grid(row=row, column=0, sticky="ew", pady=10)
+
+    def create_tool_page(self, title, refresh_command):
+        page = ctk.CTkFrame(self.tools_frame, fg_color="transparent")
+        
+        header = ctk.CTkFrame(page, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 20))
+        
+        ctk.CTkButton(header, text="← Back", width=80, command=lambda: self.show_tool_page("menu")).pack(side="left")
+        ctk.CTkLabel(header, text=title, font=ctk.CTkFont(size=20, weight="bold")).pack(side="left", padx=20)
+        
+        if refresh_command:
+            ctk.CTkButton(header, text="Refresh/Run", width=100, command=refresh_command).pack(side="right")
+            
+        scrollable = ctk.CTkScrollableFrame(page, height=400)
+        scrollable.pack(fill="both", expand=True)
+        page.list_container = scrollable
+        
+        return page
+
+    def show_tool_page(self, name):
+        self.tools_menu_frame.grid_forget()
+        self.process_page.grid_forget()
+        self.startup_page.grid_forget()
+        self.large_files_page.grid_forget()
+        self.cache_page.grid_forget()
+        
+        if name == "menu":
+            self.tools_menu_frame.grid(row=0, column=0, sticky="nsew")
+        elif name == "process":
+            self.process_page.grid(row=0, column=0, sticky="nsew")
+            self.refresh_processes()
+        elif name == "startup":
+            self.startup_page.grid(row=0, column=0, sticky="nsew")
+            self.load_startup_apps()
+        elif name == "large_files":
+            self.large_files_page.grid(row=0, column=0, sticky="nsew")
+        elif name == "cache":
+            self.cache_page.grid(row=0, column=0, sticky="nsew")
+
+    def refresh_processes(self):
+        for widget in self.process_page.list_container.winfo_children():
+            widget.destroy()
+        
+        procs = []
+        for p in psutil.process_iter(['pid', 'name', 'memory_info']):
+            try:
+                procs.append(p.info)
+            except: pass
+            
+        procs = sorted(procs, key=lambda x: x['memory_info'].rss, reverse=True)[:15]
+        
+        for p in procs:
+            frame = ctk.CTkFrame(self.process_page.list_container, fg_color="transparent")
+            frame.pack(fill="x", pady=2)
+            
+            mem = f"{p['memory_info'].rss / (1024*1024):.1f} MB"
+            ctk.CTkLabel(frame, text=f"{p['name']} (PID: {p['pid']}) - {mem}", anchor="w").pack(side="left", padx=10)
+            
+            btn = ctk.CTkButton(frame, text="Kill", width=60, fg_color="#e74c3c", 
+                               command=lambda pid=p['pid']: self.kill_process(pid))
+            btn.pack(side="right", padx=10)
+
+    def kill_process(self, pid):
+        try:
+            psutil.Process(pid).terminate()
+            messagebox.showinfo("Success", f"Process {pid} terminated.")
+            self.refresh_processes()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def load_startup_apps(self):
+        for widget in self.startup_page.list_container.winfo_children():
+            widget.destroy()
+            
+        import winreg
+        paths = [
+            (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+            (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run")
+        ]
+        
+        for hkey, path in paths:
+            try:
+                key = winreg.OpenKey(hkey, path)
+                for i in range(winreg.QueryInfoKey(key)[1]):
+                    name, val, _ = winreg.EnumValue(key, i)
+                    ctk.CTkLabel(self.startup_page.list_container, text=f"{name}: {val}", anchor="w").pack(fill="x", padx=10, pady=2)
+            except: pass
+
+    def start_large_file_scan(self):
+        for widget in self.large_files_page.list_container.winfo_children():
+            widget.destroy()
+            
+        ctk.CTkLabel(self.large_files_page.list_container, text="Scanning C: drive for files > 1GB... Please wait.").pack(pady=20)
+        threading.Thread(target=self.run_large_file_scan, daemon=True).start()
+
+    def run_large_file_scan(self):
+        large_files = []
+        for root, dirs, files in os.walk("C:\\"):
+            for f in files:
+                try:
+                    fp = os.path.join(root, f)
+                    size = os.path.getsize(fp)
+                    if size > 1024 * 1024 * 1024: # 1GB
+                        large_files.append((fp, size))
+                except: continue
+            if len(large_files) > 20: break # Limit for safety
+            
+        self.after(0, lambda: self.display_large_files(large_files))
+
+    def display_large_files(self, files):
+        for widget in self.large_files_page.list_container.winfo_children():
+            widget.destroy()
+            
+        if not files:
+            ctk.CTkLabel(self.large_files_page.list_container, text="No files larger than 1GB found or access denied.").pack(pady=20)
+            return
+
+        for fp, size in files:
+            ctk.CTkLabel(self.large_files_page.list_container, text=f"{os.path.basename(fp)} ({size/(1024*1024*1024):.1f} GB)\nPath: {fp}", 
+                        anchor="w", justify="left").pack(fill="x", padx=10, pady=5)
+
+    def run_cache_clean(self):
+        for widget in self.cache_page.list_container.winfo_children():
+            widget.destroy()
+        
+        paths = {
+            "Chrome Cache": os.path.join(os.environ.get('LOCALAPPDATA', ''), r"Google\Chrome\User Data\Default\Cache"),
+            "Edge Cache": os.path.join(os.environ.get('LOCALAPPDATA', ''), r"Microsoft\Edge\User Data\Default\Cache")
+        }
+        
+        for name, path in paths.items():
+            if os.path.exists(path):
+                try:
+                    size = self.get_folder_size(path)
+                    send2trash(path)
+                    ctk.CTkLabel(self.cache_page.list_container, text=f"SUCCESS: {name} ({self.format_size(size)}) moved to trash.").pack(pady=5)
+                except Exception as e:
+                    ctk.CTkLabel(self.cache_page.list_container, text=f"FAILED: {name} ({str(e)})").pack(pady=5)
+            else:
+                ctk.CTkLabel(self.cache_page.list_container, text=f"NOT FOUND: {name}").pack(pady=5)
+
+    def run_dns_flush(self):
+        try:
+            subprocess.run(["ipconfig", "/flushdns"], shell=True, check=True)
+            messagebox.showinfo("Success", "DNS Resolver Cache successfully flushed.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to flush DNS: {str(e)}")
 
     def change_appearance_mode(self, new_appearance_mode: str):
         ctk.set_appearance_mode(new_appearance_mode)
