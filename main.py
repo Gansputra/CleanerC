@@ -486,16 +486,8 @@ class CleanerCApp(ctk.CTk):
                 if not path or not os.path.exists(path):
                     continue
                 
-                # Special case for Recycle Bin: empty it using Windows Shell API
+                # We skip "Recycle Bin" in the main loop and do it at the very end
                 if name == "Recycle Bin":
-                    self.log_message(f"Emptying {name}...")
-                    # 1: SHERB_NOCONFIRMATION, 2: SHERB_NOPROGRESSUI, 4: SHERB_NOSOUND
-                    result = ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, 1 | 2 | 4)
-                    if result == 0:
-                        self.log_message(f" > {name} successfully emptied.")
-                        items_cleaned += 1
-                    else:
-                        self.log_message(f" > Failed to empty {name} (Error code: {result})")
                     continue
 
                 self.log_message(f"Cleaning: {name}...")
@@ -515,7 +507,22 @@ class CleanerCApp(ctk.CTk):
                 self.log_message(f" > Error processing {name}: {str(e)}")
 
         self.log_message("-" * 40)
-        self.log_message(f"CLEANING COMPLETE: {items_cleaned} items moved to Recycle Bin.")
+        
+        # FINAL STEP: Empty Recycle Bin so everything moved to trash is permanently gone
+        self.log_message("FINALIZING: Emptying Recycle Bin...")
+        self.status_text_var.set("Emptying Recycle Bin...")
+        try:
+            # 1: SHERB_NOCONFIRMATION, 2: SHERB_NOPROGRESSUI, 4: SHERB_NOSOUND
+            result = ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, 1 | 2 | 4)
+            if result == 0:
+                self.log_message(" > Recycle Bin successfully emptied.")
+            else:
+                self.log_message(f" > Note: Recycle Bin cleanup returned code {result}.")
+        except Exception as e:
+            self.log_message(f" > Note: Failed to empty Recycle Bin: {str(e)}")
+
+        self.log_message("-" * 40)
+        self.log_message(f"CLEANING COMPLETE: {items_cleaned} items processed.")
         if errors > 0:
             self.log_message(f"Note: {errors} items were skipped (likely in use).")
         
