@@ -27,6 +27,43 @@ class CleanerCApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
+        # --- Localization ---
+        self.current_lang = "en"
+        self.translations = {
+            "en": {
+                "logo": "CleanerC 🧹", "dashboard": "Dashboard", "cleaner": "Disk Cleaner", "tools": "System Tools",
+                "appearance": "Appearance Mode:", "language": "Language:", "overview": "System Overview",
+                "secure": "● SYSTEM SECURE", "optimizable": "● OPTIMIZABLE", "action": "● ACTION RECOMMENDED",
+                "total": "Total Capacity", "used": "Used Space", "free": "Free Space", 
+                "cpu_metrics": "CPU Metrics", "gpu_metrics": "GPU Metrics", "sys_info": "System Information",
+                "scan": "Scan", "start_clean": "Start Cleaning", "refresh": "Refresh", "log": "Activity Log",
+                "ready": "System Ready", "process": "Process Optimizer", "startup": "Startup Manager",
+                "large": "Large File Finder", "cache": "Cache Cleaner", "dns": "DNS Flush",
+                "back": "← Back", "run": "Run Action", "kill_proc": "Kill Process", "open": "Open Tool",
+                "proc_desc": "Manage running apps & free RAM", "start_desc": "Control apps that start with Windows",
+                "large_desc": "Find files over 1GB on your drive", "cache_desc": "Clean browser & application cache",
+                "dns_desc": "Reset network resolver cache", "uptime": "Uptime", "sc_ready": "System Cleaner Ready",
+                "coming": "System Tools Coming Soon", "author": "Author: Gansputra", "kill_msg": "Process terminated.",
+                "dns_msg": "DNS Resolver Cache successfully flushed."
+            },
+            "id": {
+                "logo": "PembersihC 🧹", "dashboard": "Dasbor", "cleaner": "Pembersih Disk", "tools": "Alat Sistem",
+                "appearance": "Mode Tampilan:", "language": "Pilihan Bahasa:", "overview": "Ikhtisar Sistem",
+                "secure": "● SISTEM AMAN", "optimizable": "● BISA DIOPTIMALKAN", "action": "● BUTUH TINDAKAN",
+                "total": "Kapasitas Total", "used": "Ruang Terpakai", "free": "Ruang Kosong", 
+                "cpu_metrics": "Metrik CPU", "gpu_metrics": "Metrik GPU", "sys_info": "Informasi Sistem",
+                "scan": "Pindai", "start_clean": "Mulai Bersihkan", "refresh": "Segarkan", "log": "Log Aktivitas",
+                "ready": "Sistem Siap", "process": "Pengoptimal Proses", "startup": "Manajer Startup",
+                "large": "Pencari File Besar", "cache": "Pembersih Cache", "dns": "Flush DNS",
+                "back": "← Kembali", "run": "Jalankan", "kill_proc": "Matikan l", "open": "Buka Alat",
+                "proc_desc": "Kelola aplikasi & bebaskan RAM", "start_desc": "Atur aplikasi startup Windows",
+                "large_desc": "Cari file di atas 1GB", "cache_desc": "Bersihkan cache browser & aplikasi",
+                "dns_desc": "Reset cache resolver jaringan", "uptime": "Waktu Aktif", "sc_ready": "Pembersih Sistem Siap",
+                "coming": "Alat Sistem Segera Hadir", "author": "Penulis: Gansputra", "kill_msg": "Proses dimatikan.",
+                "dns_msg": "Cache DNS berhasil dibersihkan."
+            }
+        }
+
         # --- Cleaning Targets ---
         self.clean_targets = {
             "User Temp": os.environ.get('TEMP'),
@@ -65,11 +102,22 @@ class CleanerCApp(ctk.CTk):
             values=["Dark", "Light", "System"],
             command=self.change_appearance_mode
         )
-        self.appearance_mode_optionemenu.grid(row=6, column=0, padx=20, pady=(10, 20))
+        self.appearance_mode_optionemenu.grid(row=6, column=0, padx=20, pady=(10, 10))
+
+        # Language Switcher
+        self.language_label = ctk.CTkLabel(self.sidebar_frame, text="Language:", anchor="w")
+        self.language_label.grid(row=7, column=0, padx=20, pady=(10, 0))
+        self.language_optionemenu = ctk.CTkOptionMenu(
+            self.sidebar_frame, 
+            values=["English", "Indonesia"],
+            command=self.change_language
+        )
+        self.language_optionemenu.grid(row=8, column=0, padx=20, pady=(10, 20))
+        self.sidebar_frame.grid_rowconfigure(4, weight=1) # Adjust push
 
         # --- Author Section ---
         self.author_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        self.author_frame.grid(row=7, column=0, padx=20, pady=(20, 20), sticky="ew")
+        self.author_frame.grid(row=9, column=0, padx=20, pady=(20, 20), sticky="ew")
         
         self.author_label = ctk.CTkLabel(
             self.author_frame, 
@@ -314,7 +362,7 @@ class CleanerCApp(ctk.CTk):
             boot_time_timestamp = psutil.boot_time()
             uptime_seconds = time.time() - boot_time_timestamp
             uptime_str = str(timedelta(seconds=int(uptime_seconds)))
-            self.card_system.value_label.configure(text=f"Uptime: {uptime_str}")
+            self.card_system.value_label.configure(text=f"{t['uptime']}: {uptime_str}")
 
         except Exception:
             pass
@@ -390,10 +438,7 @@ class CleanerCApp(ctk.CTk):
         self.btn_clean.configure(state="normal")
 
         # Update status badge based on results
-        if self.total_junk_found > 1024 * 1024 * 100: # > 100 MB
-            self.status_badge.configure(text="● ACTION RECOMMENDED", text_color="#e67e22", fg_color=("#fef5e7", "#3e2723"))
-        elif self.total_junk_found > 0:
-            self.status_badge.configure(text="● OPTIMIZABLE", text_color="#3498db", fg_color=("#ebf5fb", "#1a3a5a"))
+        self.update_status_badge(self.total_junk_found)
 
     def start_cleaning_thread(self):
         # Check if scan has been run
@@ -557,11 +602,15 @@ class CleanerCApp(ctk.CTk):
         header = ctk.CTkFrame(page, fg_color="transparent")
         header.pack(fill="x", pady=25, padx=25)
         
-        ctk.CTkButton(header, text="← Back", width=80, fg_color="gray40", command=lambda: self.show_tool_page("menu")).pack(side="left")
-        ctk.CTkLabel(header, text=title, font=ctk.CTkFont(size=24, weight="bold")).pack(side="left", padx=20)
+        page.back_btn = ctk.CTkButton(header, text="← Back", width=80, fg_color="gray40", command=lambda: self.show_tool_page("menu"))
+        page.back_btn.pack(side="left")
+        
+        page.title_lbl = ctk.CTkLabel(header, text=title, font=ctk.CTkFont(size=24, weight="bold"))
+        page.title_lbl.pack(side="left", padx=20)
         
         if refresh_command:
-            ctk.CTkButton(header, text="Run Action", width=120, fg_color="#2ecc71", hover_color="#27ae60", command=refresh_command).pack(side="right")
+            page.run_btn = ctk.CTkButton(header, text="Run Action", width=120, fg_color="#2ecc71", hover_color="#27ae60", command=refresh_command)
+            page.run_btn.pack(side="right")
             
         scrollable = ctk.CTkScrollableFrame(page, height=450, fg_color="transparent")
         scrollable.pack(fill="both", expand=True, padx=15, pady=(0, 15))
@@ -707,6 +756,79 @@ class CleanerCApp(ctk.CTk):
 
     def change_appearance_mode(self, new_appearance_mode: str):
         ctk.set_appearance_mode(new_appearance_mode)
+
+    def change_language(self, new_language: str):
+        self.current_lang = "en" if new_language == "English" else "id"
+        self.update_ui_text()
+
+    def update_ui_text(self):
+        t = self.translations[self.current_lang]
+        
+        # Sidebar
+        self.logo_label.configure(text=t["logo"])
+        self.btn_dashboard.configure(text=t["dashboard"])
+        self.btn_cleaner.configure(text=t["cleaner"])
+        self.btn_tools.configure(text=t["tools"])
+        self.appearance_mode_label.configure(text=t["appearance"])
+        self.language_label.configure(text=t["language"])
+        self.author_label.configure(text=t["author"])
+        
+        # Dashboard
+        self.title_label.configure(text=t["overview"])
+        # Update badge based on current total junk (reuse existing logic but with translated keys)
+        if hasattr(self, 'total_junk_found'):
+            self.update_status_badge(self.total_junk_found)
+        else:
+            self.status_badge.configure(text=t["secure"])
+            
+        # Re-title cards (need to access title labels which aren't currently saved as attributes)
+        # For simplicity, let's just update the ones we can easily identify
+        self.card_total.winfo_children()[0].configure(text=t["total"])
+        self.card_used.winfo_children()[0].configure(text=t["used"])
+        self.card_free.winfo_children()[0].configure(text=t["free"])
+        self.card_cpu.winfo_children()[0].configure(text=t["cpu_metrics"])
+        self.card_gpu.winfo_children()[0].configure(text=t["gpu_metrics"])
+        self.card_system.winfo_children()[0].configure(text=t["sys_info"])
+        
+        # Disk Cleaner
+        self.btn_analyze.configure(text=t["scan"])
+        self.btn_clean.configure(text=t["start_clean"])
+        self.btn_refresh.configure(text=t["refresh"])
+        self.log_label.configure(text=t["log"])
+        
+        # System Tools - We'll just refresh the tools menu anchors
+        for i, widget in enumerate(self.tools_menu_frame.winfo_children()):
+            # This is a bit hacky because we don't have direct references to the inner labels
+            # But the order is known
+            titles = [t["process"], t["startup"], t["large"], t["cache"], t["dns"]]
+            descs = [t["proc_desc"], t["start_desc"], t["large_desc"], t["cache_desc"], t["dns_desc"]]
+            if i < len(titles):
+                # widget is the card frame
+                widget.winfo_children()[0].configure(text=titles[i])
+                widget.winfo_children()[1].configure(text=descs[i])
+                widget.winfo_children()[2].configure(text=t["open"])
+
+        # Tool Pages Header
+        tool_pages = [
+            (self.process_page, t["process"]),
+            (self.startup_page, t["startup"]),
+            (self.large_files_page, t["large"]),
+            (self.cache_page, t["cache"])
+        ]
+        for page, title in tool_pages:
+            page.back_btn.configure(text=t["back"])
+            page.title_lbl.configure(text=title)
+            if hasattr(page, 'run_btn'):
+                page.run_btn.configure(text=t["run"])
+
+    def update_status_badge(self, total_size):
+        t = self.translations[self.current_lang]
+        if total_size == 0:
+            self.status_badge.configure(text=t["secure"], text_color="#2ecc71", fg_color=("#dbf9e1", "#1e3a24"))
+        elif total_size < 500 * 1024 * 1024:
+            self.status_badge.configure(text=t["optimizable"], text_color="#f39c12", fg_color=("#fef5e7", "#3e2723"))
+        else:
+            self.status_badge.configure(text=t["action"], text_color="#e74c3c", fg_color=("#fadbd8", "#442222"))
 
 if __name__ == "__main__":
     app = CleanerCApp()
