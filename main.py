@@ -223,16 +223,16 @@ class CleanerCApp(ctk.CTk):
         self.tools_frame.grid_columnconfigure(0, weight=1)
         self.tools_frame.grid_rowconfigure(0, weight=1)
 
-        # Tools Menu (List of Buttons)
+        # Tools Menu (Grid of Cards)
         self.tools_menu_frame = ctk.CTkFrame(self.tools_frame, fg_color="transparent")
         self.tools_menu_frame.grid(row=0, column=0, sticky="nsew")
-        self.tools_menu_frame.grid_columnconfigure(0, weight=1)
+        self.tools_menu_frame.grid_columnconfigure((0, 1), weight=1, pad=15)
 
-        self.create_tool_anchor("Process Optimizer", "Manage running apps & free RAM", 0, lambda: self.show_tool_page("process"))
-        self.create_tool_anchor("Startup Manager", "Control apps that start with Windows", 1, lambda: self.show_tool_page("startup"))
-        self.create_tool_anchor("Large File Finder", "Find files over 1GB on your drive", 2, lambda: self.show_tool_page("large_files"))
-        self.create_tool_anchor("Cache Cleaner", "Clean browser & application cache", 3, lambda: self.show_tool_page("cache"))
-        self.create_tool_anchor("DNS Flush", "Reset network resolver cache", 4, self.run_dns_flush)
+        self.create_tool_anchor("⚡ Process Optimizer", "Manage running apps & free RAM", 0, 0, lambda: self.show_tool_page("process"))
+        self.create_tool_anchor("🚀 Startup Manager", "Control apps that start with Windows", 0, 1, lambda: self.show_tool_page("startup"))
+        self.create_tool_anchor("📂 Large File Finder", "Find files over 1GB on your drive", 1, 0, lambda: self.show_tool_page("large_files"))
+        self.create_tool_anchor("🧹 Cache Cleaner", "Clean browser & application cache", 1, 1, lambda: self.show_tool_page("cache"))
+        self.create_tool_anchor("🌐 DNS Flush", "Reset network resolver cache", 2, 0, self.run_dns_flush)
 
         # Individual Tool Pages
         self.process_page = self.create_tool_page("Process Optimizer", self.refresh_processes)
@@ -533,36 +533,38 @@ class CleanerCApp(ctk.CTk):
             self.tools_frame.grid(row=0, column=0, sticky="nsew")
             self.show_tool_page("menu")
 
-    def create_tool_anchor(self, title, desc, row, command):
+    def create_tool_anchor(self, title, desc, row, col, command):
+        btn_frame = ctk.CTkFrame(self.tools_menu_frame, fg_color=("#ffffff", "#2b2b2b"), corner_radius=15, border_width=2, border_color=("#dcdcdc", "#3d3d3d"))
+        btn_frame.grid(row=row, column=col, sticky="nsew", padx=10, pady=10)
+        
+        # Tool Title
+        ctk.CTkLabel(btn_frame, text=title, font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(15, 0), padx=20, anchor="nw")
+        
+        # Tool Description
+        ctk.CTkLabel(btn_frame, text=desc, font=ctk.CTkFont(size=12), text_color="gray").pack(pady=(2, 10), padx=20, anchor="nw")
+        
+        # Action Button
         btn = ctk.CTkButton(
-            self.tools_menu_frame, 
-            text=f"{title}\n{desc}", 
-            height=80, 
-            font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color=("#ffffff", "#2b2b2b"),
-            text_color=("gray10", "gray90"),
-            hover_color=("gray85", "gray20"),
-            border_width=2,
-            border_color=("#dcdcdc", "#3d3d3d"),
-            anchor="w",
+            btn_frame, text="Open Tool", height=32, 
+            fg_color=("#3498db", "#2980b9"), hover_color="#21618c",
             command=command
         )
-        btn.grid(row=row, column=0, sticky="ew", pady=10)
+        btn.pack(pady=(10, 15), padx=20, fill="x")
 
     def create_tool_page(self, title, refresh_command):
-        page = ctk.CTkFrame(self.tools_frame, fg_color="transparent")
+        page = ctk.CTkFrame(self.tools_frame, fg_color=("#f9f9f9", "#1d1d1d"), corner_radius=20)
         
         header = ctk.CTkFrame(page, fg_color="transparent")
-        header.pack(fill="x", pady=(0, 20))
+        header.pack(fill="x", pady=25, padx=25)
         
-        ctk.CTkButton(header, text="← Back", width=80, command=lambda: self.show_tool_page("menu")).pack(side="left")
-        ctk.CTkLabel(header, text=title, font=ctk.CTkFont(size=20, weight="bold")).pack(side="left", padx=20)
+        ctk.CTkButton(header, text="← Back", width=80, fg_color="gray40", command=lambda: self.show_tool_page("menu")).pack(side="left")
+        ctk.CTkLabel(header, text=title, font=ctk.CTkFont(size=24, weight="bold")).pack(side="left", padx=20)
         
         if refresh_command:
-            ctk.CTkButton(header, text="Refresh/Run", width=100, command=refresh_command).pack(side="right")
+            ctk.CTkButton(header, text="Run Action", width=120, fg_color="#2ecc71", hover_color="#27ae60", command=refresh_command).pack(side="right")
             
-        scrollable = ctk.CTkScrollableFrame(page, height=400)
-        scrollable.pack(fill="both", expand=True)
+        scrollable = ctk.CTkScrollableFrame(page, height=450, fg_color="transparent")
+        scrollable.pack(fill="both", expand=True, padx=15, pady=(0, 15))
         page.list_container = scrollable
         
         return page
@@ -600,15 +602,16 @@ class CleanerCApp(ctk.CTk):
         procs = sorted(procs, key=lambda x: x['memory_info'].rss, reverse=True)[:15]
         
         for p in procs:
-            frame = ctk.CTkFrame(self.process_page.list_container, fg_color="transparent")
-            frame.pack(fill="x", pady=2)
+            frame = ctk.CTkFrame(self.process_page.list_container, fg_color=("#ffffff", "#2b2b2b"), corner_radius=10)
+            frame.pack(fill="x", pady=5, padx=5)
             
             mem = f"{p['memory_info'].rss / (1024*1024):.1f} MB"
-            ctk.CTkLabel(frame, text=f"{p['name']} (PID: {p['pid']}) - {mem}", anchor="w").pack(side="left", padx=10)
+            info_label = ctk.CTkLabel(frame, text=f"{p['name']}", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(15, 0), pady=10)
+            ctk.CTkLabel(frame, text=f"PID: {p['pid']} | {mem}", text_color="gray").pack(side="left", padx=15)
             
-            btn = ctk.CTkButton(frame, text="Kill", width=60, fg_color="#e74c3c", 
+            btn = ctk.CTkButton(frame, text="Kill Process", width=100, height=28, fg_color="#e74c3c", hover_color="#c0392b",
                                command=lambda pid=p['pid']: self.kill_process(pid))
-            btn.pack(side="right", padx=10)
+            btn.pack(side="right", padx=15)
 
     def kill_process(self, pid):
         try:
@@ -633,7 +636,10 @@ class CleanerCApp(ctk.CTk):
                 key = winreg.OpenKey(hkey, path)
                 for i in range(winreg.QueryInfoKey(key)[1]):
                     name, val, _ = winreg.EnumValue(key, i)
-                    ctk.CTkLabel(self.startup_page.list_container, text=f"{name}: {val}", anchor="w").pack(fill="x", padx=10, pady=2)
+                    item_frame = ctk.CTkFrame(self.startup_page.list_container, fg_color=("#ffffff", "#2b2b2b"), corner_radius=8)
+                    item_frame.pack(fill="x", pady=3, padx=5)
+                    ctk.CTkLabel(item_frame, text=f"• {name}", font=ctk.CTkFont(weight="bold"), anchor="w").pack(padx=15, pady=(5, 0), fill="x")
+                    ctk.CTkLabel(item_frame, text=val, font=ctk.CTkFont(size=10), text_color="gray", anchor="w").pack(padx=15, pady=(0, 5), fill="x")
             except: pass
 
     def start_large_file_scan(self):
@@ -666,8 +672,11 @@ class CleanerCApp(ctk.CTk):
             return
 
         for fp, size in files:
-            ctk.CTkLabel(self.large_files_page.list_container, text=f"{os.path.basename(fp)} ({size/(1024*1024*1024):.1f} GB)\nPath: {fp}", 
-                        anchor="w", justify="left").pack(fill="x", padx=10, pady=5)
+            card = ctk.CTkFrame(self.large_files_page.list_container, fg_color=("#ffffff", "#2b2b2b"), corner_radius=10)
+            card.pack(fill="x", pady=5, padx=5)
+            ctk.CTkLabel(card, text=os.path.basename(fp), font=ctk.CTkFont(weight="bold"), anchor="w").pack(padx=15, pady=(10, 0), fill="x")
+            ctk.CTkLabel(card, text=f"Size: {size/(1024*1024*1024):.2f} GB", text_color="#e67e22").pack(padx=15, anchor="w")
+            ctk.CTkLabel(card, text=fp, font=ctk.CTkFont(size=10), text_color="gray", anchor="w").pack(padx=15, pady=(0, 10), fill="x")
 
     def run_cache_clean(self):
         for widget in self.cache_page.list_container.winfo_children():
