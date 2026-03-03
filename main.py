@@ -106,7 +106,7 @@ class CleanerCApp(ctk.CTk):
         self.actions_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=20)
 
         self.btn_analyze = ctk.CTkButton(
-            self.actions_frame, text="Quick Analysis", 
+            self.actions_frame, text="Scan", 
             width=150, height=40, font=ctk.CTkFont(weight="bold"),
             command=self.run_analysis
         )
@@ -204,25 +204,28 @@ class CleanerCApp(ctk.CTk):
         return f"{s} {size_name[i]}"
 
     def run_analysis(self):
-        self.log_message("Scanning safe directories for junk files...")
+        self.log_message("INITIALIZING SCAN...")
+        self.log_message("-" * 40)
         total_junk = 0
         
         for name, path in self.clean_targets.items():
             if path and os.path.exists(path):
-                self.log_message(f"Analyzing {name}...")
+                self.log_message(f"Scanning: {name}")
                 size = self.get_folder_size(path)
                 total_junk += size
-                self.log_message(f" > Found: {self.format_size(size)}")
+                self.log_message(f" > Content Size: {self.format_size(size)}")
             else:
-                self.log_message(f"Skipped: {name} (Path not accessible)")
+                self.log_message(f"Skipped: {name} (Directory not found)")
         
-        self.log_message("-" * 20)
-        self.log_message(f"TOTAL JUNK DETECTED: {self.format_size(total_junk)}")
-        self.log_message("Analysis complete. Ready to clean.")
+        self.log_message("-" * 40)
+        self.log_message(f"TOTAL RECLAIMABLE SPACE: {self.format_size(total_junk)}")
+        self.log_message("Scan complete. System ready for optimization.")
 
     def log_message(self, message):
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_textbox.configure(state="normal")
-        self.log_textbox.insert("end", f"[{type(self).__name__}] {message}\n")
+        self.log_textbox.insert("end", f"[{timestamp}] {message}\n")
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
 
