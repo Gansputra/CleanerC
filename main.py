@@ -3,6 +3,7 @@ import os
 import psutil
 import threading
 import tkinter as tk
+import ctypes
 from tkinter import messagebox
 from send2trash import send2trash
 
@@ -315,9 +316,16 @@ class CleanerCApp(ctk.CTk):
                 if not path or not os.path.exists(path):
                     continue
                 
-                # Special case for Recycle Bin: send2trash doesn't apply to it
+                # Special case for Recycle Bin: empty it using Windows Shell API
                 if name == "Recycle Bin":
-                    self.log_message(f"Skipping {name} (send2trash not applicable)")
+                    self.log_message(f"Emptying {name}...")
+                    # 1: SHERB_NOCONFIRMATION, 2: SHERB_NOPROGRESSUI, 4: SHERB_NOSOUND
+                    result = ctypes.windll.shell32.SHEmptyRecycleBinW(None, None, 1 | 2 | 4)
+                    if result == 0:
+                        self.log_message(f" > {name} successfully emptied.")
+                        items_cleaned += 1
+                    else:
+                        self.log_message(f" > Failed to empty {name} (Error code: {result})")
                     continue
 
                 self.log_message(f"Cleaning: {name}...")
