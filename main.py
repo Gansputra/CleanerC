@@ -7,6 +7,7 @@ import ctypes
 import platform
 import wmi
 import GPUtil
+import webbrowser
 from tkinter import messagebox
 from send2trash import send2trash
 
@@ -62,6 +63,34 @@ class CleanerCApp(ctk.CTk):
             command=self.change_appearance_mode
         )
         self.appearance_mode_optionemenu.grid(row=6, column=0, padx=20, pady=(10, 20))
+
+        # --- Author Section ---
+        self.author_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        self.author_frame.grid(row=7, column=0, padx=20, pady=(20, 20), sticky="ew")
+        
+        self.author_label = ctk.CTkLabel(
+            self.author_frame, 
+            text="Author: Gansputra", 
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="gray"
+        )
+        self.author_label.pack(anchor="w")
+
+        self.github_btn = ctk.CTkButton(
+            self.author_frame, text="GitHub", 
+            height=24, font=ctk.CTkFont(size=11),
+            fg_color="gray30", hover_color="gray20",
+            command=lambda: webbrowser.open("https://github.com/Gansputra/")
+        )
+        self.github_btn.pack(fill="x", pady=(5, 2))
+
+        self.insta_btn = ctk.CTkButton(
+            self.author_frame, text="Instagram", 
+            height=24, font=ctk.CTkFont(size=11),
+            fg_color="#E1306C", hover_color="#C13584",
+            command=lambda: webbrowser.open("https://instagram.com/gans.putra_")
+        )
+        self.insta_btn.pack(fill="x", pady=2)
 
         # --- Main Content UI ---
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
