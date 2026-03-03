@@ -1,6 +1,8 @@
 import customtkinter as ctk
 import psutil
 import os
+import threading
+from send2trash import send2trash
 
 class CleanerCApp(ctk.CTk):
     def __init__(self):
@@ -116,7 +118,7 @@ class CleanerCApp(ctk.CTk):
             self.actions_frame, text="Start Cleaning", 
             fg_color="#e74c3c", hover_color="#c0392b",
             width=150, height=40, font=ctk.CTkFont(weight="bold"),
-            command=lambda: self.log_message("Warning: Cleaning logic not implemented yet.")
+            command=self.start_cleaning_thread
         )
         self.btn_clean.pack(side="left", padx=10)
 
@@ -220,6 +222,59 @@ class CleanerCApp(ctk.CTk):
         self.log_message("-" * 40)
         self.log_message(f"TOTAL RECLAIMABLE SPACE: {self.format_size(total_junk)}")
         self.log_message("Scan complete. System ready for optimization.")
+
+    def start_cleaning_thread(self):
+        # Run cleaning in a separate thread to keep UI responsive
+        cleaning_thread = threading.Thread(target=self.run_cleaning)
+        cleaning_thread.daemon = True
+        cleaning_thread.start()
+
+    def run_cleaning(self):
+        self.log_message("STARTING CLEANING PROCESS...")
+        self.log_message("-" * 40)
+        
+        items_cleaned = 0
+        errors = 0
+        
+        # Disable buttons during cleaning
+        self.btn_clean.configure(state="disabled", text="Cleaning...")
+        self.btn_analyze.configure(state="disabled")
+
+        for name, path in self.clean_targets.items():
+            if not path or not os.path.exists(path):
+                continue
+            
+            # Special case for Recycle Bin: send2trash doesn't apply to it
+            if name == "Recycle Bin":
+                self.log_message(f"Skipping {name} (send2trash not applicable)")
+                continue
+
+            self.log_message(f"Cleaning: {name}...")
+            
+            try:
+                # List items in the folder and send them to trash
+                for item in os.listdir(path):
+                    item_path = os.path.join(path, item)
+                    try:
+                        send2trash(item_path)
+                        items_cleaned += 1
+                    except Exception:
+                        # Files in use are common in Temp folders
+                        errors += 1
+                        continue
+                self.log_message(f" > Finished cleaning {name}")
+            except Exception as e:
+                self.log_message(f" > Error accessing {name}: {str(e)}")
+
+        self.log_message("-" * 40)
+        self.log_message(f"CLEANING COMPLETE: {items_cleaned} items moved to Recycle Bin.")
+        if errors > 0:
+            self.log_message(f"Note: {errors} items were skipped (likely in use).")
+        
+        # Reset buttons and update UI
+        self.btn_clean.configure(state="normal", text="Start Cleaning")
+        self.btn_analyze.configure(state="normal")
+        self.update_disk_info()
 
     def log_message(self, message):
         from datetime import datetime
