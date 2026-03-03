@@ -4,6 +4,7 @@ import psutil
 import threading
 import tkinter as tk
 import ctypes
+import platform
 from tkinter import messagebox
 from send2trash import send2trash
 
@@ -95,7 +96,16 @@ class CleanerCApp(ctk.CTk):
         self.card_free = self.create_stat_card(self.stats_frame, "Free Space", "...", "#2ecc71", 2, 0)
 
         # CPU Card in new row
-        self.card_cpu = self.create_stat_card(self.stats_frame, "CPU Usage", "0%", "#9b59b6", 0, 1)
+        cpu_name = platform.processor()
+        # Clean up CPU name for Windows if possible
+        try:
+            import winreg
+            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
+            cpu_name = winreg.QueryValueEx(key, "ProcessorNameString")[0]
+        except:
+            pass
+            
+        self.card_cpu = self.create_stat_card(self.stats_frame, "CPU Metrics", "0%", "#9b59b6", 0, 1, subtitle=cpu_name)
         
         # Start recurring updates for CPU
         self.update_system_stats()
@@ -170,13 +180,17 @@ class CleanerCApp(ctk.CTk):
         self.select_frame_by_name("dashboard")
         self.update_disk_info()
 
-    def create_stat_card(self, parent, title, value, color, column, row=0):
+    def create_stat_card(self, parent, title, value, color, column, row=0, subtitle=None):
         card = ctk.CTkFrame(parent, height=120, corner_radius=15)
-        card.grid(row=row, column=column, sticky="ew", padx=5, pady=5)
+        card.grid(row=row, column=column, columnspan=3 if row > 0 else 1, sticky="ew", padx=5, pady=5)
         
         title_lbl = ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=13, weight="normal"), text_color="gray")
         title_lbl.pack(pady=(15, 0), padx=20, anchor="nw")
         
+        if subtitle:
+            sub_lbl = ctk.CTkLabel(card, text=subtitle, font=ctk.CTkFont(size=11, weight="normal"), text_color="gray60")
+            sub_lbl.pack(padx=20, anchor="nw")
+
         value_lbl = ctk.CTkLabel(card, text=value, font=ctk.CTkFont(size=24, weight="bold"), text_color=color)
         value_lbl.pack(pady=(5, 15), padx=20, anchor="nw")
         
