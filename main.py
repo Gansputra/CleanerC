@@ -90,9 +90,15 @@ class CleanerCApp(ctk.CTk):
         self.stats_frame.grid(row=1, column=0, sticky="ew", pady=(0, 20))
         self.stats_frame.grid_columnconfigure((0, 1, 2), weight=1, pad=20)
 
-        self.card_total = self.create_stat_card(self.stats_frame, "Total Capacity", "...", "#3498db", 0)
-        self.card_used = self.create_stat_card(self.stats_frame, "Used Space", "...", "#e74c3c", 1)
-        self.card_free = self.create_stat_card(self.stats_frame, "Free Space", "...", "#2ecc71", 2)
+        self.card_total = self.create_stat_card(self.stats_frame, "Total Capacity", "...", "#3498db", 0, 0)
+        self.card_used = self.create_stat_card(self.stats_frame, "Used Space", "...", "#e74c3c", 1, 0)
+        self.card_free = self.create_stat_card(self.stats_frame, "Free Space", "...", "#2ecc71", 2, 0)
+
+        # CPU Card in new row
+        self.card_cpu = self.create_stat_card(self.stats_frame, "CPU Usage", "0%", "#9b59b6", 0, 1)
+        
+        # Start recurring updates for CPU
+        self.update_system_stats()
 
         # 2. Disk Cleaner Frame
         self.cleaner_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
@@ -164,9 +170,9 @@ class CleanerCApp(ctk.CTk):
         self.select_frame_by_name("dashboard")
         self.update_disk_info()
 
-    def create_stat_card(self, parent, title, value, color, column):
+    def create_stat_card(self, parent, title, value, color, column, row=0):
         card = ctk.CTkFrame(parent, height=120, corner_radius=15)
-        card.grid(row=0, column=column, sticky="ew", padx=5)
+        card.grid(row=row, column=column, sticky="ew", padx=5, pady=5)
         
         title_lbl = ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=13, weight="normal"), text_color="gray")
         title_lbl.pack(pady=(15, 0), padx=20, anchor="nw")
@@ -195,6 +201,26 @@ class CleanerCApp(ctk.CTk):
             
         except Exception as e:
             self.log_message(f"Error fetching disk info: {str(e)}")
+
+    def update_system_stats(self):
+        try:
+            # CPU Update
+            cpu_usage = psutil.cpu_percent()
+            self.card_cpu.value_label.configure(text=f"{cpu_usage}%")
+            
+            # Change color based on load
+            if cpu_usage > 80:
+                self.card_cpu.value_label.configure(text_color="#e74c3c")
+            elif cpu_usage > 50:
+                self.card_cpu.value_label.configure(text_color="#f39c12")
+            else:
+                self.card_cpu.value_label.configure(text_color="#9b59b6")
+
+        except Exception:
+            pass
+            
+        # Schedule next update in 1 second
+        self.after(1000, self.update_system_stats)
 
     def get_folder_size(self, folder_path):
         total_size = 0
