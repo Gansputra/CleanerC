@@ -1,7 +1,9 @@
 import customtkinter as ctk
-import psutil
 import os
+import psutil
 import threading
+import tkinter as tk
+from tkinter import messagebox
 from send2trash import send2trash
 
 class CleanerCApp(ctk.CTk):
@@ -59,7 +61,7 @@ class CleanerCApp(ctk.CTk):
 
         # --- Main Content UI ---
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
-        self.main_container.grid(row=0, column=1, padx=30, pady=30, sticky="nsew")
+        self.main_container.grid(row=0, column=1, padx=(40, 40), pady=(40, 40), sticky="nsew")
         self.main_container.grid_columnconfigure(0, weight=1)
         self.main_container.grid_rowconfigure(2, weight=1) # Log area expands
 
@@ -143,8 +145,8 @@ class CleanerCApp(ctk.CTk):
         )
         self.status_label.grid(row=0, column=0, sticky="w")
 
-        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=10)
-        self.progress_bar.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=8, progress_color="#3498db")
+        self.progress_bar.grid(row=1, column=0, sticky="ew", pady=(5, 15))
         self.progress_bar.set(0)
 
         # Log/Output Panel
@@ -236,7 +238,7 @@ class CleanerCApp(ctk.CTk):
         
         self.log_message("INITIALIZING SCAN...")
         self.log_message("-" * 40)
-        total_junk = 0
+        self.total_junk_found = 0
         targets = list(self.clean_targets.items())
         total_targets = len(targets)
         
@@ -249,7 +251,7 @@ class CleanerCApp(ctk.CTk):
                 if path and os.path.exists(path):
                     self.log_message(f"Scanning: {name}")
                     size = self.get_folder_size(path)
-                    total_junk += size
+                    self.total_junk_found += size
                     self.log_message(f" > Content Size: {self.format_size(size)}")
                 else:
                     self.log_message(f"Skipped: {name} (Directory not found)")
@@ -257,18 +259,37 @@ class CleanerCApp(ctk.CTk):
                 self.log_message(f"Error checking {name}: {str(e)}")
         
         self.log_message("-" * 40)
-        self.log_message(f"TOTAL RECLAIMABLE SPACE: {self.format_size(total_junk)}")
+        self.log_message(f"TOTAL RECLAIMABLE SPACE: {self.format_size(self.total_junk_found)}")
         self.log_message("Scan complete. System ready for optimization.")
         
         self.status_text_var.set("Scan Complete")
         self.btn_analyze.configure(state="normal", text="Scan")
         self.btn_clean.configure(state="normal")
 
+        # Update status badge based on results
+        if self.total_junk_found > 1024 * 1024 * 100: # > 100 MB
+            self.status_badge.configure(text="● ACTION RECOMMENDED", text_color="#e67e22", fg_color=("#fef5e7", "#3e2723"))
+        elif self.total_junk_found > 0:
+            self.status_badge.configure(text="● OPTIMIZABLE", text_color="#3498db", fg_color=("#ebf5fb", "#1a3a5a"))
+
     def start_cleaning_thread(self):
-        # Run cleaning in a separate thread to keep UI responsive
-        cleaning_thread = threading.Thread(target=self.run_cleaning)
-        cleaning_thread.daemon = True
-        cleaning_thread.start()
+        # Check if scan has been run
+        if not hasattr(self, 'total_junk_found') or self.total_junk_found == 0:
+            messagebox.showinfo("No Junk Found", "Please run a 'Scan' first or no junk files were detected.")
+            return
+
+        # Ask for confirmation before cleaning
+        confirm = messagebox.askyesno(
+            "Confirm Optimization", 
+            f"Are you sure you want to move approximately {self.format_size(self.total_junk_found)} of junk files to the Recycle Bin?\n\n"
+            "This will help reclaim storage space safely."
+        )
+        
+        if confirm:
+            # Run cleaning in a separate thread to keep UI responsive
+            cleaning_thread = threading.Thread(target=self.run_cleaning)
+            cleaning_thread.daemon = True
+            cleaning_thread.start()
 
     def run_cleaning(self):
         self.log_message("STARTING CLEANING PROCESS...")
@@ -325,6 +346,18 @@ class CleanerCApp(ctk.CTk):
         self.btn_clean.configure(state="normal", text="Start Cleaning")
         self.btn_analyze.configure(state="normal")
         self.update_disk_info()
+
+        # Show success message
+        messagebox.showinfo(
+            "System Cleaned", 
+            f"Optimization successful!\n\n"
+            f"Moved {items_cleaned} items to Recycle Bin.\n"
+            f"{errors} items were skipped (currently in use)."
+        )
+
+        # Reset junk count and status badge
+        self.total_junk_found = 0
+        self.status_badge.configure(text="● SYSTEM SECURE", text_color="#2ecc71", fg_color=("#dbf9e1", "#1e3a24"))
 
     def log_message(self, message):
         from datetime import datetime
