@@ -8,6 +8,8 @@ import platform
 import wmi
 import GPUtil
 import webbrowser
+import time
+from datetime import datetime, timedelta
 from tkinter import messagebox
 from send2trash import send2trash
 
@@ -150,7 +152,11 @@ class CleanerCApp(ctk.CTk):
             
         self.card_gpu = self.create_stat_card(self.stats_frame, "GPU Metrics", "0%", "#f1c40f", 0, 2, subtitle=gpu_name)
         
-        # Start recurring updates for CPU & GPU
+        # System Info Card
+        os_info = f"{platform.system()} {platform.release()} (Build {platform.version()})"
+        self.card_system = self.create_stat_card(self.stats_frame, "System Information", "...", "#2980b9", 0, 3, subtitle=os_info)
+
+        # Start recurring updates for CPU, GPU & Uptime
         self.update_system_stats()
 
         # 2. Disk Cleaner Frame
@@ -288,6 +294,12 @@ class CleanerCApp(ctk.CTk):
                     self.card_gpu.value_label.configure(text_color="#f1c40f")
             else:
                 self.card_gpu.value_label.configure(text="N/A", text_color="gray")
+
+            # Uptime Update
+            boot_time_timestamp = psutil.boot_time()
+            uptime_seconds = time.time() - boot_time_timestamp
+            uptime_str = str(timedelta(seconds=int(uptime_seconds)))
+            self.card_system.value_label.configure(text=f"Uptime: {uptime_str}")
 
         except Exception:
             pass
