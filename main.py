@@ -69,7 +69,10 @@ class CleanerCApp(ctk.CTk):
             "User Temp": os.environ.get('TEMP'),
             "System Temp": os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Temp'),
             "Prefetch": os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'Prefetch'),
-            "Recycle Bin": "C:\\$Recycle.Bin"
+            "Recycle Bin": "C:\\$Recycle.Bin",
+            "Windows Update Cache": os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'SoftwareDistribution', 'Download'),
+            "Delivery Optimization": os.path.join(os.environ.get('SystemRoot', 'C:\\Windows'), 'ServiceProfiles', 'NetworkService', 'AppData', 'Local', 'Microsoft', 'Windows', 'DeliveryOptimization', 'Cache'),
+            "DirectX Shader Cache": os.path.join(os.environ.get('LOCALAPPDATA', ''), 'D3DSCache')
         }
 
         # --- Layout Grid Configuration ---
