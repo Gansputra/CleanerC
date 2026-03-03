@@ -110,7 +110,7 @@ class CleanerCApp(ctk.CTk):
         self.btn_analyze = ctk.CTkButton(
             self.actions_frame, text="Scan", 
             width=150, height=40, font=ctk.CTkFont(weight="bold"),
-            command=self.run_analysis
+            command=self.start_analysis_thread
         )
         self.btn_analyze.pack(side="left", padx=(0, 10))
 
@@ -129,9 +129,27 @@ class CleanerCApp(ctk.CTk):
         )
         self.btn_refresh.pack(side="right")
 
+        # Progress Section
+        self.progress_frame = ctk.CTkFrame(self.work_area, fg_color="transparent")
+        self.progress_frame.grid(row=1, column=0, sticky="ew", padx=25, pady=(0, 10))
+        self.progress_frame.grid_columnconfigure(0, weight=1)
+
+        self.status_text_var = ctk.StringVar(value="System Ready")
+        self.status_label = ctk.CTkLabel(
+            self.progress_frame, 
+            textvariable=self.status_text_var,
+            font=ctk.CTkFont(size=12, slant="italic"),
+            text_color="gray"
+        )
+        self.status_label.grid(row=0, column=0, sticky="w")
+
+        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=10)
+        self.progress_bar.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+        self.progress_bar.set(0)
+
         # Log/Output Panel
         self.log_label = ctk.CTkLabel(self.work_area, text="Activity Log", font=ctk.CTkFont(size=14, weight="bold"))
-        self.log_label.grid(row=1, column=0, sticky="nw", padx=25)
+        self.log_label.grid(row=2, column=0, sticky="nw", padx=25)
 
         self.log_textbox = ctk.CTkTextbox(
             self.work_area, 
@@ -140,7 +158,7 @@ class CleanerCApp(ctk.CTk):
             border_width=2,
             border_color=("#d1d1d1", "#3d3d3d")
         )
-        self.log_textbox.grid(row=2, column=0, sticky="nsew", padx=20, pady=(5, 20))
+        self.log_textbox.grid(row=3, column=0, sticky="nsew", padx=20, pady=(5, 20))
         self.log_textbox.insert("0.0", "Welcome to CleanerC Engine v1.0\nReady for operation.\n" + "-"*30 + "\n")
         self.log_textbox.configure(state="disabled")
 
@@ -205,12 +223,28 @@ class CleanerCApp(ctk.CTk):
         s = round(size_bytes / p, 2)
         return f"{s} {size_name[i]}"
 
+    def start_analysis_thread(self):
+        # Run scan in a separate thread
+        analysis_thread = threading.Thread(target=self.run_analysis)
+        analysis_thread.daemon = True
+        analysis_thread.start()
+
     def run_analysis(self):
+        self.btn_analyze.configure(state="disabled", text="Scanning...")
+        self.btn_clean.configure(state="disabled")
+        self.progress_bar.set(0)
+        
         self.log_message("INITIALIZING SCAN...")
         self.log_message("-" * 40)
         total_junk = 0
+        targets = list(self.clean_targets.items())
+        total_targets = len(targets)
         
-        for name, path in self.clean_targets.items():
+        for i, (name, path) in enumerate(targets):
+            progress = (i + 1) / total_targets
+            self.status_text_var.set(f"Analyzing: {name}...")
+            self.progress_bar.set(progress)
+            
             if path and os.path.exists(path):
                 self.log_message(f"Scanning: {name}")
                 size = self.get_folder_size(path)
@@ -222,6 +256,10 @@ class CleanerCApp(ctk.CTk):
         self.log_message("-" * 40)
         self.log_message(f"TOTAL RECLAIMABLE SPACE: {self.format_size(total_junk)}")
         self.log_message("Scan complete. System ready for optimization.")
+        
+        self.status_text_var.set("Scan Complete")
+        self.btn_analyze.configure(state="normal", text="Scan")
+        self.btn_clean.configure(state="normal")
 
     def start_cleaning_thread(self):
         # Run cleaning in a separate thread to keep UI responsive
@@ -239,8 +277,16 @@ class CleanerCApp(ctk.CTk):
         # Disable buttons during cleaning
         self.btn_clean.configure(state="disabled", text="Cleaning...")
         self.btn_analyze.configure(state="disabled")
+        self.progress_bar.set(0)
 
-        for name, path in self.clean_targets.items():
+        targets = list(self.clean_targets.items())
+        total_targets = len(targets)
+
+        for i, (name, path) in enumerate(targets):
+            progress = (i + 1) / total_targets
+            self.status_text_var.set(f"Cleaning: {name}...")
+            self.progress_bar.set(progress)
+            
             if not path or not os.path.exists(path):
                 continue
             
@@ -271,6 +317,7 @@ class CleanerCApp(ctk.CTk):
         if errors > 0:
             self.log_message(f"Note: {errors} items were skipped (likely in use).")
         
+        self.status_text_var.set("Cleaning Complete")
         # Reset buttons and update UI
         self.btn_clean.configure(state="normal", text="Start Cleaning")
         self.btn_analyze.configure(state="normal")
