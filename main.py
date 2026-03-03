@@ -245,13 +245,16 @@ class CleanerCApp(ctk.CTk):
             self.status_text_var.set(f"Analyzing: {name}...")
             self.progress_bar.set(progress)
             
-            if path and os.path.exists(path):
-                self.log_message(f"Scanning: {name}")
-                size = self.get_folder_size(path)
-                total_junk += size
-                self.log_message(f" > Content Size: {self.format_size(size)}")
-            else:
-                self.log_message(f"Skipped: {name} (Directory not found)")
+            try:
+                if path and os.path.exists(path):
+                    self.log_message(f"Scanning: {name}")
+                    size = self.get_folder_size(path)
+                    total_junk += size
+                    self.log_message(f" > Content Size: {self.format_size(size)}")
+                else:
+                    self.log_message(f"Skipped: {name} (Directory not found)")
+            except Exception as e:
+                self.log_message(f"Error checking {name}: {str(e)}")
         
         self.log_message("-" * 40)
         self.log_message(f"TOTAL RECLAIMABLE SPACE: {self.format_size(total_junk)}")
@@ -287,17 +290,17 @@ class CleanerCApp(ctk.CTk):
             self.status_text_var.set(f"Cleaning: {name}...")
             self.progress_bar.set(progress)
             
-            if not path or not os.path.exists(path):
-                continue
-            
-            # Special case for Recycle Bin: send2trash doesn't apply to it
-            if name == "Recycle Bin":
-                self.log_message(f"Skipping {name} (send2trash not applicable)")
-                continue
-
-            self.log_message(f"Cleaning: {name}...")
-            
             try:
+                if not path or not os.path.exists(path):
+                    continue
+                
+                # Special case for Recycle Bin: send2trash doesn't apply to it
+                if name == "Recycle Bin":
+                    self.log_message(f"Skipping {name} (send2trash not applicable)")
+                    continue
+
+                self.log_message(f"Cleaning: {name}...")
+                
                 # List items in the folder and send them to trash
                 for item in os.listdir(path):
                     item_path = os.path.join(path, item)
@@ -310,7 +313,7 @@ class CleanerCApp(ctk.CTk):
                         continue
                 self.log_message(f" > Finished cleaning {name}")
             except Exception as e:
-                self.log_message(f" > Error accessing {name}: {str(e)}")
+                self.log_message(f" > Error processing {name}: {str(e)}")
 
         self.log_message("-" * 40)
         self.log_message(f"CLEANING COMPLETE: {items_cleaned} items moved to Recycle Bin.")
