@@ -4,11 +4,14 @@ CleanerC adalah aplikasi desktop berbasis Python yang dirancang untuk membantu p
 
 ## Fitur Utama
 
-1.  **Pemindaian Cepat**: Menganalisis direktori temporer pengguna, temporer sistem, prefetch, dan Recycle Bin untuk mengidentifikasi file yang tidak diperlukan.
-2.  **Pembersihan Aman**: Menggunakan metode pemindahan ke Recycle Bin (bukan penghapusan permanen) untuk menjaga keamanan data.
-3.  **Monitor Kapasitas**: Menampilkan informasi penggunaan disk secara real-time.
-4.  **Antarmuka Responsif**: Menggunakan teknologi multithreading untuk memastikan aplikasi tetap stabil dan tidak membeku selama proses pemindaian atau pembersihan.
-5.  **Indikator Kemajuan**: Dilengkapi dengan bilah kemajuan (progress bar) dan status visual untuk memberikan informasi transparan kepada pengguna.
+1.  **Pemindaian Cepat**: Menganalisis direktori temporer, update cache, dan file hibernasi untuk mengidentifikasi sampah sistem.
+2.  **Manajer Hibernasi**: Mematikan hibernasi (`powercfg -h off`) untuk menghemat hingga 10GB+ ruang disk.
+3.  **Flush DNS**: Reset cache resolver jaringan untuk mengatasi masalah koneksi.
+4.  **Pembersihan Aman**: Menggunakan metode pemindahan ke Recycle Bin untuk menjaga keamanan data.
+5.  **Monitor Kapasitas**: Menampilkan informasi penggunaan disk, CPU, dan GPU secara real-time.
+6.  **Alat Sistem**: Termasuk Process Optimizer, Startup Manager, dan Pencari File Besar.
+7.  **Antarmuka Responsif**: UI modern dengan CustomTkinter dan dukungan multithreading.
+8.  **Indikator Kemajuan**: Progress bar dan status visual yang transparan.
 
 ## Spesifikasi Teknis
 

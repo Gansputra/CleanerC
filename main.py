@@ -44,7 +44,8 @@ class CleanerCApp(ctk.CTk):
                 "large_desc": "Find files over 1GB on your drive", "cache_desc": "Clean browser & application cache",
                 "dns_desc": "Reset network resolver cache", "uptime": "Uptime", "sc_ready": "System Cleaner Ready",
                 "coming": "System Tools Coming Soon", "author": "Author: Gansputra", "kill_msg": "Process terminated.",
-                "dns_msg": "DNS Resolver Cache successfully flushed."
+                "dns_msg": "DNS Resolver Cache successfully flushed.",
+                "hibernation": "Hibernation Manager", "hiber_desc": "Disable hibernation (saves ~10GB)", "hiber_msg": "Hibernation has been disabled."
             },
             "id": {
                 "logo": "PembersihC 🧹", "dashboard": "Dasbor", "cleaner": "Pembersih Disk", "tools": "Alat Sistem",
@@ -60,7 +61,8 @@ class CleanerCApp(ctk.CTk):
                 "large_desc": "Cari file di atas 1GB", "cache_desc": "Bersihkan cache browser & aplikasi",
                 "dns_desc": "Reset cache resolver jaringan", "uptime": "Waktu Aktif", "sc_ready": "Pembersih Sistem Siap",
                 "coming": "Alat Sistem Segera Hadir", "author": "Penulis: Gansputra", "kill_msg": "Proses dimatikan.",
-                "dns_msg": "Cache DNS berhasil dibersihkan."
+                "dns_msg": "Cache DNS berhasil dibersihkan.",
+                "hibernation": "Manajer Hibernasi", "hiber_desc": "Matikan hibernasi (hemat ~10GB)", "hiber_msg": "Hibernasi berhasil dimatikan."
             }
         }
 
@@ -284,6 +286,7 @@ class CleanerCApp(ctk.CTk):
         self.create_tool_anchor("📂 Large File Finder", "Find files over 1GB on your drive", 1, 0, lambda: self.show_tool_page("large_files"))
         self.create_tool_anchor("🧹 Cache Cleaner", "Clean browser & application cache", 1, 1, lambda: self.show_tool_page("cache"))
         self.create_tool_anchor("🌐 DNS Flush", "Reset network resolver cache", 2, 0, self.run_dns_flush)
+        self.create_tool_anchor("🌙 Hibernation", "Disable hibernation to save space", 2, 1, self.run_hibernation_toggle)
 
         # Individual Tool Pages
         self.process_page = self.create_tool_page("Process Optimizer", self.refresh_processes)
@@ -431,6 +434,17 @@ class CleanerCApp(ctk.CTk):
                     self.log_message(f"Skipped: {name} (Directory not found)")
             except Exception as e:
                 self.log_message(f"Error checking {name}: {str(e)}")
+
+        # Special check for Hibernation File (hiberfil.sys)
+        hiber_path = "C:\\hiberfil.sys"
+        if os.path.exists(hiber_path):
+            try:
+                size = os.path.getsize(hiber_path)
+                self.total_junk_found += size
+                self.log_message(f"Scanning: Hibernation File")
+                self.log_message(f" > Content Size: {self.format_size(size)}")
+            except Exception:
+                pass
         
         self.log_message("-" * 40)
         self.log_message(f"TOTAL RECLAIMABLE SPACE: {self.format_size(self.total_junk_found)}")
@@ -505,6 +519,17 @@ class CleanerCApp(ctk.CTk):
                 self.log_message(f" > Finished cleaning {name}")
             except Exception as e:
                 self.log_message(f" > Error processing {name}: {str(e)}")
+
+        # Special handling for Hibernation File
+        if os.path.exists("C:\\hiberfil.sys"):
+            self.log_message("Disabling Hibernation to reclaim space...")
+            try:
+                # Need shell=True for some Windows environments, shell=False is generally safer but run_command uses powershell
+                subprocess.run(["powercfg", "-h", "off"], shell=True, check=True, capture_output=True)
+                items_cleaned += 1
+                self.log_message(" > Hibernation turned off and hiberfil.sys removed.")
+            except Exception as e:
+                self.log_message(" > Note: Failed to disable hibernation. Admin rights required.")
 
         self.log_message("-" * 40)
         
@@ -760,9 +785,27 @@ class CleanerCApp(ctk.CTk):
     def run_dns_flush(self):
         try:
             subprocess.run(["ipconfig", "/flushdns"], shell=True, check=True)
-            messagebox.showinfo("Success", "DNS Resolver Cache successfully flushed.")
+            messagebox.showinfo("Success", self.translations[self.current_lang]["dns_msg"])
         except Exception as e:
             messagebox.showerror("Error", f"Failed to flush DNS: {str(e)}")
+
+    def run_hibernation_toggle(self):
+        t = self.translations[self.current_lang]
+        confirm = messagebox.askyesno(
+            t["hibernation"], 
+            f"{t['hiber_desc']}?\n\n"
+            "This will delete hiberfil.sys and can save several gigabytes of space (usually 4GB-16GB)."
+        )
+        if confirm:
+            try:
+                self.log_message("Running powercfg -h off...")
+                subprocess.run(["powercfg", "-h", "off"], shell=True, check=True)
+                messagebox.showinfo("Success", t["hiber_msg"])
+                self.update_disk_info()
+                self.log_message("Hibernation successfully disabled.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to disable hibernation: {str(e)}\n\nMake sure to run CleanerC as Administrator.")
+                self.log_message("Failed to disable hibernation (Access Denied).")
 
     def change_appearance_mode(self, new_appearance_mode: str):
         ctk.set_appearance_mode(new_appearance_mode)
@@ -810,8 +853,8 @@ class CleanerCApp(ctk.CTk):
         for i, widget in enumerate(self.tools_menu_frame.winfo_children()):
             # This is a bit hacky because we don't have direct references to the inner labels
             # But the order is known
-            titles = [t["process"], t["startup"], t["large"], t["cache"], t["dns"]]
-            descs = [t["proc_desc"], t["start_desc"], t["large_desc"], t["cache_desc"], t["dns_desc"]]
+            titles = [t["process"], t["startup"], t["large"], t["cache"], t["dns"], t["hibernation"]]
+            descs = [t["proc_desc"], t["start_desc"], t["large_desc"], t["cache_desc"], t["dns_desc"], t["hiber_desc"]]
             if i < len(titles):
                 # widget is the card frame
                 widget.winfo_children()[0].configure(text=titles[i])
